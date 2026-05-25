@@ -1,0 +1,817 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>極限聯想倒數挑戰 - 終極懸疑版</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700;900&display=swap');
+        
+        :root {
+            --primary-cyan: #22d3ee;
+            --urgent-red: #f43f5e;
+        }
+
+        body {
+            font-family: 'Noto Sans TC', sans-serif;
+            background-color: #020617;
+            color: #f8fafc;
+            overflow: hidden;
+            height: 100dvh;
+            margin: 0;
+            touch-action: manipulation;
+        }
+
+        .timer-svg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+
+        .timer-path {
+            fill: none;
+            stroke: var(--primary-cyan);
+            stroke-width: 12;
+            stroke-linecap: round;
+            filter: drop-shadow(0 0 8px #0891b2);
+            transition: stroke-dashoffset 0.1s linear, stroke 0.3s ease, filter 0.3s ease;
+        }
+
+        .urgent .timer-path {
+            stroke: var(--urgent-red);
+            filter: drop-shadow(0 0 15px #e11d48);
+            animation: pulse-border 0.5s infinite alternate;
+        }
+
+        @keyframes pulse-border {
+            from { opacity: 1; stroke-width: 12; }
+            to { opacity: 0.8; stroke-width: 16; }
+        }
+
+        .urgent #timer-text {
+            animation: pulse-text 0.5s infinite alternate;
+        }
+
+        @keyframes pulse-text {
+            from { transform: scale(1); }
+            to { transform: scale(1.05); }
+        }
+
+        .question-box {
+            background: rgba(15, 23, 42, 0.4);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        #main-container {
+            transition: transform 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.2), border-color 0.2s ease;
+        }
+
+        .shake {
+            animation: shake-anim 0.5s cubic-bezier(.36,.07,.19,.97) both;
+        }
+
+        @keyframes shake-anim {
+            10%, 90% { transform: translate3d(-1px, 0, 0); }
+            20%, 80% { transform: translate3d(2px, 0, 0); }
+            30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+            40%, 60% { transform: translate3d(4px, 0, 0); }
+        }
+
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #0f172a; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
+
+        input[type=range] { accent-color: var(--primary-cyan); }
+        .no-select { user-select: none; -webkit-user-select: none; }
+        
+        .long-text { font-size: clamp(2.5rem, 10vw, 6rem) !important; text-align: center; }
+
+        .designer-tag {
+            position: fixed;
+            bottom: 8px;
+            right: 12px;
+            font-size: 10px;
+            color: rgba(148, 163, 184, 0.5);
+            z-index: 100;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body class="flex items-center justify-center">
+
+    <!-- YouTube 隱藏撥放器 -->
+    <div id="youtube-player" style="position: absolute; left: -9999px;"></div>
+
+    <!-- 設定畫面 -->
+    <div id="setup-screen" class="w-[92%] max-w-2xl bg-slate-900 p-6 rounded-[2rem] shadow-2xl z-50 border border-slate-700 max-h-[95vh] overflow-y-auto relative">
+        <h1 class="text-3xl md:text-4xl font-black mb-2 text-center bg-gradient-to-br from-cyan-300 to-emerald-400 bg-clip-text text-transparent">極限聯想倒數挑戰</h1>
+        <p class="text-xs text-center text-slate-400 mb-6">護理師專屬白衣天使限定版</p>
+                
+        <div class="space-y-5">
+            <div>
+                <label class="block text-xs font-bold mb-2 text-slate-400 uppercase tracking-widest">護理師聯想題目列表 (一列一題)</label>
+                <textarea id="question-input" rows="7" class="w-full bg-slate-950 border border-slate-700 rounded-2xl p-4 text-sm focus:ring-2 focus:ring-cyan-500 outline-none transition-all text-white" placeholder="輸入題目...">護理師口袋必備小物
+醫療器材與儀器
+生命徵象有哪些
+醫院常見科別
+給藥「三讀五對」內容
+點滴與常見輸液種類
+急救車必備藥物與工具
+護理站最常出現的文具
+常見抽血試管顏色
+傷口敷料與耗材
+常見護理紀錄英文簡寫
+手部衛生「五個時機」
+護理師最怕聽到的話
+大夜班提神抗睏好物
+醫院病房常見警報聲來源
+常見臨床技術/護理技術
+手術室護理必備用品
+病人安全目標項目
+護理師常見職業病與痠痛部位
+病房常見消耗性醫療器材
+交班時最怕聽到的狀況
+醫院常見的廣播代碼 (如: 999)
+出院衛教要交代的事項
+交班時一定要確認的管路
+預防病人跌倒的措施</textarea>
+            </div>
+
+            <!-- 挑戰參數與目標數量 -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="bg-slate-800/40 p-4 rounded-2xl">
+                    <label class="block text-xs font-bold mb-3 text-slate-400">挑戰時限</label>
+                    <div class="flex gap-2 mb-3">
+                        <button onclick="setDuration(10)" class="duration-btn flex-1 py-2 rounded-xl bg-slate-700 hover:bg-cyan-600 transition-colors font-bold text-sm" data-sec="10">10秒</button>
+                        <button onclick="setDuration(15)" class="duration-btn flex-1 py-2 rounded-xl bg-slate-700 hover:bg-cyan-600 transition-colors font-bold text-sm" data-sec="15">15秒</button>
+                        <button onclick="setDuration(20)" class="duration-btn flex-1 py-2 rounded-xl bg-slate-700 hover:bg-cyan-600 transition-colors font-bold text-sm" data-sec="20">20秒</button>
+                    </div>
+                    <input type="number" id="custom-sec" placeholder="自訂秒數" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-2 text-center text-sm focus:ring-2 focus:ring-cyan-500 outline-none text-white">
+                </div>
+
+                <div class="bg-slate-800/40 p-4 rounded-2xl">
+                    <label class="block text-xs font-bold mb-3 text-slate-400">聯想目標數量</label>
+                    <select id="target-mode" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-2 mb-3 text-sm outline-none text-white" onchange="toggleTargetUI()">
+                        <option value="range">隨機範圍</option>
+                        <option value="fixed">固定數量</option>
+                    </select>
+                    <div id="range-ui" class="flex items-center gap-2">
+                        <input type="number" id="target-min" value="3" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-2 text-center text-sm text-white">
+                        <span class="text-slate-500">~</span>
+                        <input type="number" id="target-max" value="5" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-2 text-center text-sm text-white">
+                    </div>
+                    <div id="fixed-ui" class="hidden">
+                        <input type="number" id="target-fixed" value="5" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-2 text-center text-sm text-white">
+                    </div>
+                </div>
+            </div>
+
+            <!-- 進階出題與音效設定 -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                <div class="bg-slate-800/40 p-4 rounded-2xl space-y-3">
+                    <label class="block text-xs font-bold text-slate-400">出題邏輯</label>
+                    <div class="grid grid-cols-2 gap-2">
+                        <label class="flex items-center gap-2 cursor-pointer bg-slate-900/50 p-2 rounded-lg">
+                            <input type="radio" name="order" value="random" checked class="accent-cyan-400"> 隨機出題
+                        </label>
+                        <label class="flex items-center gap-2 cursor-pointer bg-slate-900/50 p-2 rounded-lg">
+                            <input type="radio" name="order" value="sequential" class="accent-cyan-400"> 順序出題
+                        </label>
+                    </div>
+                    <label class="flex items-center gap-2 cursor-pointer pt-1">
+                        <input type="checkbox" id="repeat-toggle" class="w-4 h-4 accent-cyan-400"> 題目可重複出現
+                    </label>
+                </div>
+
+                <!-- 緊張氣氛背景音樂與音效設定 -->
+                <div class="bg-slate-800/40 p-4 rounded-2xl space-y-3">
+                    <label class="block text-xs font-bold text-slate-400">背景音樂與系統音效</label>
+                    <div class="space-y-2 text-xs">
+                        <div>
+                            <label class="block text-[10px] text-slate-400 mb-1">背景音樂風格</label>
+                            <select id="bgm-theme" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-1.5 text-xs outline-none text-white" onchange="changeBgmTheme()">
+                                <option value="BdDQnT6i1t4" selected>💓 窒息急促心跳 (預設高壓)</option>
+                                <option value="_1hu-SZvN28">🧠 綜藝問答益智 (經典計時)</option>
+                                <option value="edIncAZ17XY">💰 生死百萬富翁 (懸疑恐怖)</option>
+                                <option value="gb6kJHVwKVg">🚨 極限警報倒數 (史詩大氣)</option>
+                            </select>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span class="text-[10px] text-slate-400 w-12">背景音樂</span>
+                            <input type="range" id="bgm-volume" min="0" max="100" value="40" class="flex-1 h-1.5 rounded-lg">
+                            <button id="test-bgm-btn" onclick="testBgm()" class="px-2 py-0.5 bg-slate-700 hover:bg-cyan-500 rounded text-[9px] text-white font-bold transition-colors">試聽</button>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span class="text-[10px] text-slate-400 w-12">系統音效</span>
+                            <input type="range" id="sfx-volume" min="0" max="100" value="80" class="flex-1 h-1.5 rounded-lg">
+                            <button onclick="testSfx()" class="px-2 py-0.5 bg-slate-700 hover:bg-cyan-500 rounded text-[9px] text-white font-bold transition-colors">試聽</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <button onclick="startGame()" class="w-full py-4 bg-cyan-500 hover:bg-cyan-400 text-slate-950 rounded-2xl text-xl font-black shadow-xl transition-all transform active:scale-95">
+                進入挑戰
+            </button>
+        </div>
+        <div class="designer-tag">設計者：愛迪樂 鍾孟修 職能治療師</div>
+    </div>
+
+    <!-- 遊戲畫面 -->
+    <div id="game-screen" class="hidden w-full h-full flex flex-col items-center justify-between p-2 md:p-6 relative no-select">
+        
+        <!-- 頂部資訊列 -->
+        <div class="w-full flex justify-between items-center z-10 px-2 sm:px-4 mt-2 sm:mt-0">
+            <button onclick="backToSetup()" class="text-slate-400 hover:text-white flex items-center gap-2 bg-slate-800/40 px-3 py-1.5 rounded-xl text-[10px] border border-white/5 transition-all">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+                <span>重新設定</span>
+            </button>
+            
+            <div class="flex flex-col items-center">
+                <div class="text-[9px] font-bold text-slate-500 uppercase tracking-widest leading-none mb-1">進度</div>
+                <div class="text-cyan-400 font-black tabular-nums text-sm" id="q-progress">1 / 1</div>
+            </div>
+
+            <div class="flex flex-col items-end">
+                <div class="text-[9px] font-bold text-slate-500 uppercase tracking-widest leading-none mb-1">剩餘時間</div>
+                <div class="text-2xl md:text-4xl font-black text-cyan-400 tabular-nums" id="timer-text">10.0s</div>
+            </div>
+        </div>
+
+        <!-- 題目中央展示區塊 -->
+        <div id="main-container" class="relative w-full max-w-5xl flex-1 flex items-center justify-center rounded-[2.5rem] md:rounded-[4rem] overflow-hidden my-1 sm:my-3">
+            <svg class="timer-svg" id="svg-element">
+                <path id="timer-path" class="timer-path"></path>
+            </svg>
+            
+            <div class="question-box w-full h-full flex flex-col items-center justify-center p-4 sm:p-8">
+                <div id="question-display" class="font-black text-5xl sm:text-6xl md:text-7xl lg:text-8xl leading-none text-white drop-shadow-2xl mb-6 text-center max-w-[90%]">
+                    準備好了嗎？
+                </div>
+                <div id="target-area" class="flex items-baseline gap-4 text-yellow-400">
+                    <span class="text-2xl sm:text-4xl font-bold tracking-tight">聯想目標數量</span>
+                    <span id="target-num" class="text-6xl sm:text-8xl md:text-9xl font-black leading-none">5</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 按鈕操作區塊 -->
+        <div class="w-full max-w-xl grid grid-cols-2 gap-3 z-10 mb-3 px-2">
+            <button id="start-btn" onclick="startTimer()" class="col-span-2 py-3 md:py-4 bg-emerald-500 hover:bg-emerald-400 text-slate-950 rounded-2xl text-2xl md:text-4xl font-black shadow-xl transition-all active:scale-95">
+                開始挑戰
+            </button>
+            <button id="finish-btn" onclick="finishTimer(true)" class="hidden col-span-2 py-3 md:py-4 bg-cyan-500 hover:bg-cyan-400 text-slate-950 rounded-2xl text-2xl md:text-4xl font-black shadow-xl transition-all active:scale-95">
+                我完成了！
+            </button>
+            <button id="next-btn" onclick="nextQuestion()" class="hidden col-span-1 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-lg font-bold shadow-lg transition-all active:scale-95">
+                下一題
+            </button>
+            <button id="reset-btn" onclick="resetCurrent()" class="hidden col-span-1 py-2.5 bg-slate-700 hover:bg-slate-600 text-white rounded-xl text-lg font-bold shadow-lg transition-all active:scale-95">
+                重來
+            </button>
+        </div>
+        <div class="designer-tag">設計者：愛迪樂 鍾孟修 職能治療師</div>
+    </div>
+
+    <script>
+        // Web Audio API 實體合成音效 (消除資源載入延遲，保證百分之百發聲與極致反饋)
+        class SoundSynth {
+            constructor() {
+                this.ctx = null;
+            }
+            
+            init() {
+                if (!this.ctx) {
+                    this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+                if (this.ctx.state === 'suspended') {
+                    this.ctx.resume();
+                }
+            }
+            
+            // 清脆的時鐘滴答聲 (木質打擊感)
+            playTick() {
+                this.init();
+                const now = this.ctx.currentTime;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                const vol = parseFloat(document.getElementById('sfx-volume').value) / 100;
+                
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(800, now);
+                osc.frequency.exponentialRampToValueAtTime(100, now + 0.05);
+                
+                gain.gain.setValueAtTime(vol * 0.4, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+                
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start(now);
+                osc.stop(now + 0.06);
+            }
+            
+            // 逼真、帶有壓迫重低音的心跳聲 (咚咚！)
+            playHeartbeat() {
+                this.init();
+                const now = this.ctx.currentTime;
+                const vol = parseFloat(document.getElementById('sfx-volume').value) / 100;
+                
+                const beat = (timeOffset, pitch) => {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(pitch, now + timeOffset);
+                    osc.frequency.exponentialRampToValueAtTime(20, now + timeOffset + 0.15);
+                    
+                    gain.gain.setValueAtTime(vol * 0.9, now + timeOffset);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + timeOffset + 0.15);
+                    
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start(now + timeOffset);
+                    osc.stop(now + timeOffset + 0.16);
+                };
+                
+                // 第一下 (Lub)
+                beat(0, 55);
+                // 第二下 (Dub)
+                beat(0.12, 48);
+            }
+
+            // 勝利凱旋鈴聲 (大調漸進鐘琴音效)
+            playSuccess() {
+                this.init();
+                const now = this.ctx.currentTime;
+                const vol = parseFloat(document.getElementById('sfx-volume').value) / 100;
+                
+                const playTone = (freq, start, duration, delay) => {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(freq, now + delay);
+                    osc.frequency.linearRampToValueAtTime(freq * 1.01, now + delay + duration);
+                    
+                    gain.gain.setValueAtTime(0, now + delay);
+                    gain.gain.linearRampToValueAtTime(vol * 0.3, now + delay + 0.04);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + delay + duration);
+                    
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start(now + delay);
+                    osc.stop(now + delay + duration);
+                };
+                
+                playTone(261.63, 0.3, 0.4, 0);       // C4
+                playTone(329.63, 0.3, 0.4, 0.08);    // E4
+                playTone(392.00, 0.3, 0.4, 0.16);    // G4
+                playTone(523.25, 0.6, 0.8, 0.24);    // C5
+                playTone(659.25, 0.8, 1.0, 0.32);    // E5
+            }
+            
+            // 悲慘、低沈的時間到警報 (雙聲道鋸齒波大喇叭)
+            playFail() {
+                this.init();
+                const now = this.ctx.currentTime;
+                const vol = parseFloat(document.getElementById('sfx-volume').value) / 100;
+                
+                const playBuzz = (freq, delay, duration) => {
+                    const osc1 = this.ctx.createOscillator();
+                    const osc2 = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    
+                    osc1.type = 'sawtooth';
+                    osc2.type = 'sawtooth';
+                    
+                    osc1.frequency.setValueAtTime(freq, now + delay);
+                    osc2.frequency.setValueAtTime(freq * 1.015, now + delay);
+                    
+                    osc1.frequency.linearRampToValueAtTime(freq * 0.5, now + delay + duration);
+                    osc2.frequency.linearRampToValueAtTime(freq * 0.5 * 1.015, now + delay + duration);
+                    
+                    gain.gain.setValueAtTime(vol * 0.35, now + delay);
+                    gain.gain.linearRampToValueAtTime(vol * 0.35, now + delay + duration - 0.15);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + delay + duration);
+                    
+                    osc1.connect(gain);
+                    osc2.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    
+                    osc1.start(now + delay);
+                    osc2.start(now + delay);
+                    osc1.stop(now + delay + duration);
+                    osc2.stop(now + delay + duration);
+                };
+                
+                playBuzz(110, 0, 0.9);
+            }
+            
+            // 開始挑戰時的高音爬升音效 (Riser)
+            playRiser() {
+                this.init();
+                const now = this.ctx.currentTime;
+                const vol = parseFloat(document.getElementById('sfx-volume').value) / 100;
+                
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(140, now);
+                osc.frequency.exponentialRampToValueAtTime(700, now + 1.2);
+                
+                gain.gain.setValueAtTime(0.001, now);
+                gain.gain.linearRampToValueAtTime(vol * 0.3, now + 0.6);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 1.2);
+                
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start(now);
+                osc.stop(now + 1.2);
+            }
+        }
+
+        const soundSynth = new SoundSynth();
+
+        // 基礎變數設定
+        let duration = 10;
+        let originalQuestions = [];
+        let pool = []; 
+        let currentIdx = -1;
+        let timerInterval = null;
+        let timeLeft = 10;
+        let isRunning = false;
+        let currentTargetNum = 5;
+        let lastIntSecond = -1;
+        let player; 
+        let isTestingBgm = false;
+
+        // 嵌入 YouTube API 控制緊張 BGM
+        const tag = document.createElement('script');
+        tag.src = "https://www.youtube.com/iframe_api";
+        const firstScriptTag = document.getElementsByTagName('script')[0];
+        firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+
+        function onYouTubeIframeAPIReady() {
+            const videoId = document.getElementById('bgm-theme').value;
+            player = new YT.Player('youtube-player', {
+                height: '0',
+                width: '0',
+                videoId: videoId, 
+                playerVars: { 'autoplay': 0, 'controls': 0, 'loop': 1, 'playlist': videoId },
+                events: {
+                    'onReady': () => updateBgmVolume()
+                }
+            });
+        }
+
+        const setupScreen = document.getElementById('setup-screen');
+        const gameScreen = document.getElementById('game-screen');
+        const questionInput = document.getElementById('question-input');
+        const questionDisplay = document.getElementById('question-display');
+        const timerText = document.getElementById('timer-text');
+        const timerPath = document.getElementById('timer-path');
+        const qProgress = document.getElementById('q-progress');
+        const mainContainer = document.getElementById('main-container');
+        const startBtn = document.getElementById('start-btn');
+        const finishBtn = document.getElementById('finish-btn');
+        const nextBtn = document.getElementById('next-btn');
+        const resetBtn = document.getElementById('reset-btn');
+        const bgmVolumeInput = document.getElementById('bgm-volume');
+        const sfxVolumeInput = document.getElementById('sfx-volume');
+        const targetNumSpan = document.getElementById('target-num');
+
+        bgmVolumeInput.addEventListener('input', updateBgmVolume);
+        sfxVolumeInput.addEventListener('input', () => {
+            soundSynth.playTick(); // 即時聲音大小回饋
+        });
+        
+        function updateBgmVolume() {
+            if (player && player.setVolume) player.setVolume(bgmVolumeInput.value);
+        }
+
+        function toggleTargetUI() {
+            const mode = document.getElementById('target-mode').value;
+            document.getElementById('fixed-ui').classList.toggle('hidden', mode !== 'fixed');
+            document.getElementById('range-ui').classList.toggle('hidden', mode === 'fixed');
+        }
+
+        // 當使用者切換風格時，直接重新載入 YouTube 撥放器的影片 ID
+        function changeBgmTheme() {
+            const videoId = document.getElementById('bgm-theme').value;
+            if (player && player.loadVideoById) {
+                player.loadVideoById({
+                    videoId: videoId,
+                    startSeconds: 0
+                });
+                // 停止試聽或自動預備
+                setTimeout(() => {
+                    player.pauseVideo();
+                }, 350);
+            }
+        }
+
+        // 試聽音樂
+        function testBgm() {
+            if (!player) return;
+            soundSynth.init();
+            const testBtn = document.getElementById('test-bgm-btn');
+            if (!isTestingBgm) {
+                isTestingBgm = true;
+                testBtn.innerText = "停止";
+                testBtn.classList.remove('bg-slate-700');
+                testBtn.classList.add('bg-rose-600');
+                if (player.playVideo) {
+                    player.seekTo(0);
+                    player.playVideo();
+                }
+            } else {
+                isTestingBgm = false;
+                testBtn.innerText = "試聽";
+                testBtn.classList.add('bg-slate-700');
+                testBtn.classList.remove('bg-rose-600');
+                if (player.pauseVideo) {
+                    player.pauseVideo();
+                }
+            }
+        }
+
+        // 試聽系統音效
+        function testSfx() {
+            soundSynth.init();
+            soundSynth.playSuccess();
+        }
+
+        // 更新外圍計時框 SVG 形狀與長度
+        function updatePath() {
+            const w = mainContainer.offsetWidth;
+            const h = mainContainer.offsetHeight;
+            const r = window.innerWidth < 640 ? 40 : 64; 
+            const sw = 12; 
+            const offset = sw / 2 + 2;
+
+            const d = `
+                M ${offset + r},${offset}
+                L ${w - offset - r},${offset}
+                A ${r},${r} 0 0 1 ${w - offset},${offset + r}
+                L ${w - offset},${h - offset - r}
+                A ${r},${r} 0 0 1 ${w - offset - r},${h - offset}
+                L ${offset + r},${h - offset}
+                A ${r},${r} 0 0 1 ${offset},${h - offset - r}
+                L ${offset},${offset + r}
+                A ${r},${r} 0 0 1 ${offset + r},${offset}
+                Z
+            `;
+            timerPath.setAttribute('d', d);
+            const length = timerPath.getTotalLength();
+            timerPath.style.strokeDasharray = length;
+            timerPath.style.strokeDashoffset = 0;
+            return length;
+        }
+
+        function setDuration(sec) {
+            duration = parseFloat(sec) || 10;
+            timeLeft = duration;
+            timerText.innerText = timeLeft.toFixed(1) + 's';
+            document.querySelectorAll('.duration-btn').forEach(btn => {
+                btn.classList.toggle('bg-cyan-600', parseFloat(btn.dataset.sec) === duration);
+            });
+        }
+
+        function startGame() {
+            const input = questionInput.value.trim();
+            if (!input) return;
+            soundSynth.init();
+            originalQuestions = input.split('\n').filter(q => q.trim() !== "");
+            initPool();
+            setupScreen.classList.add('hidden');
+            gameScreen.classList.remove('hidden');
+            nextQuestion();
+        }
+
+        function initPool() {
+            const isRandom = document.querySelector('input[name="order"]:checked').value === 'random';
+            pool = Array.from({length: originalQuestions.length}, (_, i) => i);
+            if (isRandom) {
+                for (let i = pool.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [pool[i], pool[j]] = [pool[j], pool[i]];
+                }
+            }
+        }
+
+        function nextQuestion() {
+            const canRepeat = document.getElementById('repeat-toggle').checked;
+            if (pool.length === 0) initPool();
+            const qIdx = pool.shift();
+            currentIdx = qIdx;
+            if (canRepeat) {
+                const pos = Math.floor(Math.random() * (pool.length + 1));
+                pool.splice(pos, 0, qIdx);
+            }
+            resetCurrent();
+        }
+
+        function resetCurrent() {
+            clearInterval(timerInterval);
+            if (window.speechSynthesis) window.speechSynthesis.cancel();
+            isRunning = false;
+            timeLeft = duration;
+            lastIntSecond = -1;
+            mainContainer.classList.remove('time-up', 'shake', 'urgent', 'scale-[1.03]');
+            
+            const qText = originalQuestions[currentIdx];
+            questionDisplay.innerText = qText;
+            
+            if (qText.length > 5) {
+                questionDisplay.classList.add('long-text');
+            } else {
+                questionDisplay.classList.remove('long-text');
+            }
+            
+            const total = originalQuestions.length;
+            const current = originalQuestions.indexOf(originalQuestions[currentIdx]) + 1;
+            qProgress.innerText = `${current} / ${total}`;
+            
+            const mode = document.getElementById('target-mode').value;
+            if (mode === 'range') {
+                const min = parseInt(document.getElementById('target-min').value) || 3;
+                const max = parseInt(document.getElementById('target-max').value) || 5;
+                currentTargetNum = Math.floor(Math.random() * (max - min + 1)) + min;
+            } else {
+                currentTargetNum = parseInt(document.getElementById('target-fixed').value) || 5;
+            }
+            targetNumSpan.innerText = currentTargetNum;
+
+            startBtn.classList.remove('hidden');
+            finishBtn.classList.add('hidden');
+            nextBtn.classList.add('hidden');
+            resetBtn.classList.add('hidden');
+            
+            timerText.innerText = timeLeft.toFixed(1) + 's';
+            timerText.classList.remove('text-rose-500');
+            timerText.classList.add('text-cyan-400');
+
+            updatePath();
+            timerPath.style.transition = 'none';
+            timerPath.style.strokeDashoffset = 0;
+            if(player && player.pauseVideo) player.pauseVideo();
+        }
+
+        function startTimer() {
+            if (isRunning) return;
+            isRunning = true;
+            soundSynth.init();
+            
+            // 播放熱血開場 Riser 音效
+            soundSynth.playRiser();
+
+            startBtn.classList.add('hidden');
+            finishBtn.classList.remove('hidden');
+            
+            if(player && player.playVideo) {
+                player.seekTo(0);
+                player.playVideo();
+            }
+
+            const length = updatePath();
+            timerPath.style.transition = `stroke-dashoffset ${duration}s linear`;
+            timerPath.style.strokeDashoffset = length;
+
+            const startTime = Date.now();
+            const endTime = startTime + (duration * 1000);
+
+            timerInterval = setInterval(() => {
+                const now = Date.now();
+                const diff = endTime - now;
+                
+                if (diff <= 0) {
+                    finishTimer(false);
+                } else {
+                    timeLeft = diff / 1000;
+                    timerText.innerText = timeLeft.toFixed(1) + 's';
+                    const secInt = Math.ceil(timeLeft);
+
+                    // 倒數 5 秒內觸發「極度緊張」視覺與聽覺震盪
+                    if (timeLeft <= 5.0) {
+                        mainContainer.classList.add('urgent');
+                        timerText.classList.add('text-rose-500');
+                        timerText.classList.remove('text-cyan-400');
+                        
+                        if (secInt !== lastIntSecond) {
+                            speakNumber(secInt);
+                            soundSynth.playHeartbeat(); // 強烈心跳聲
+                            triggerVisualPulse();      // 畫面心跳脈搏同步縮放
+                            lastIntSecond = secInt;
+                        }
+                    } else {
+                        // 正常時間滴答聲
+                        if (secInt !== lastIntSecond) {
+                            soundSynth.playTick();
+                            lastIntSecond = secInt;
+                        }
+                    }
+                }
+            }, 50);
+        }
+
+        // 畫面與心跳聲同步的收縮震撼感
+        function triggerVisualPulse() {
+            mainContainer.classList.add('scale-[1.03]');
+            setTimeout(() => {
+                mainContainer.classList.remove('scale-[1.03]');
+            }, 150);
+        }
+
+        // 語音播報
+        function speakNumber(num) {
+            if (!window.speechSynthesis) return;
+            window.speechSynthesis.cancel();
+            const utterance = new SpeechSynthesisUtterance(num.toString());
+            utterance.lang = 'zh-TW';
+            utterance.rate = 1.6;
+            utterance.volume = parseFloat(document.getElementById('sfx-volume').value) / 100;
+            window.speechSynthesis.speak(utterance);
+        }
+
+        function finishTimer(isEarly) {
+            clearInterval(timerInterval);
+            if (window.speechSynthesis) window.speechSynthesis.cancel();
+            isRunning = false;
+            finishBtn.classList.add('hidden');
+            nextBtn.classList.remove('hidden');
+            resetBtn.classList.remove('hidden');
+            mainContainer.classList.remove('urgent', 'scale-[1.03]');
+            
+            if (isEarly) {
+                const length = timerPath.getTotalLength();
+                timerPath.style.transition = 'stroke-dashoffset 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
+                timerPath.style.strokeDashoffset = length;
+                soundSynth.playSuccess(); // 播放終極勝利和弦音效
+            } else {
+                timeLeft = 0;
+                timerText.innerText = '0.0s';
+                mainContainer.classList.add('time-up', 'shake');
+                soundSynth.playFail();    // 播放爆烈失敗警報音效
+            }
+            if(player && player.pauseVideo) player.pauseVideo();
+            
+            // 還原試聽狀態
+            if (isTestingBgm) {
+                isTestingBgm = false;
+                const testBtn = document.getElementById('test-bgm-btn');
+                if (testBtn) {
+                    testBtn.innerText = "試聽";
+                    testBtn.classList.add('bg-slate-700');
+                    testBtn.classList.remove('bg-rose-600');
+                }
+            }
+        }
+
+        function backToSetup() {
+            clearInterval(timerInterval);
+            if (window.speechSynthesis) window.speechSynthesis.cancel();
+            isRunning = false;
+            if(player && player.pauseVideo) player.pauseVideo();
+            
+            if (isTestingBgm) {
+                isTestingBgm = false;
+                const testBtn = document.getElementById('test-bgm-btn');
+                if (testBtn) {
+                    testBtn.innerText = "試聽";
+                    testBtn.classList.add('bg-slate-700');
+                    testBtn.classList.remove('bg-rose-600');
+                }
+            }
+
+            gameScreen.classList.add('hidden');
+            setupScreen.classList.remove('hidden');
+        }
+
+        // 鍵盤空白鍵與快捷鍵控制
+        window.addEventListener('keydown', (e) => {
+            if (gameScreen.classList.contains('hidden')) return;
+            if (e.code === 'Space') {
+                e.preventDefault();
+                if (!isRunning && !startBtn.classList.contains('hidden')) startTimer();
+                else if (isRunning && !finishBtn.classList.contains('hidden')) finishTimer(true);
+                else if (!isRunning && !nextBtn.classList.contains('hidden')) nextQuestion();
+            }
+            if (e.code === 'KeyR') resetCurrent();
+        });
+
+        // 畫面重整保持倒數線比例正確
+        window.addEventListener('resize', () => {
+            if (!gameScreen.classList.contains('hidden')) {
+                updatePath();
+                if (!isRunning) timerPath.style.strokeDashoffset = 0;
+            }
+        });
+
+        // 初始化秒數
+        setDuration(10);
+    </script>
+</body>
+</html>
