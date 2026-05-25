@@ -195,7 +195,8 @@
                         <div>
                             <label class="block text-[10px] text-slate-400 mb-1">背景音樂風格</label>
                             <select id="bgm-theme" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-1.5 text-xs outline-none text-white" onchange="changeBgmTheme()">
-                                <option value="BdDQnT6i1t4" selected>💓 窒息急促心跳 (預設高壓)</option>
+                                <option value="nkr0xhu3__U" selected>🔥 終極高壓緊張配樂 (玩家強推)</option>
+                                <option value="BdDQnT6i1t4">💓 窒息急促心跳 (預設高壓)</option>
                                 <option value="_1hu-SZvN28">🧠 綜藝問答益智 (經典計時)</option>
                                 <option value="edIncAZ17XY">💰 生死百萬富翁 (懸疑恐怖)</option>
                                 <option value="gb6kJHVwKVg">🚨 極限警報倒數 (史詩大氣)</option>
@@ -588,6 +589,13 @@
             initPool();
             setupScreen.classList.add('hidden');
             gameScreen.classList.remove('hidden');
+            
+            // 自動撥放選定的背景音樂，立刻拉滿遊戲氛圍
+            if (player && player.playVideo) {
+                player.seekTo(0);
+                player.playVideo();
+            }
+            
             nextQuestion();
         }
 
@@ -657,7 +665,11 @@
             updatePath();
             timerPath.style.transition = 'none';
             timerPath.style.strokeDashoffset = 0;
-            if(player && player.pauseVideo) player.pauseVideo();
+            
+            // 讓背景音樂在準備與轉場時持續播放，維持高張力，不中斷
+            if (player && player.playVideo && player.getPlayerState() !== 1) {
+                player.playVideo();
+            }
         }
 
         function startTimer() {
@@ -672,7 +684,6 @@
             finishBtn.classList.remove('hidden');
             
             if(player && player.playVideo) {
-                player.seekTo(0);
                 player.playVideo();
             }
 
@@ -756,7 +767,8 @@
                 mainContainer.classList.add('time-up', 'shake');
                 soundSynth.playFail();    // 播放爆烈失敗警報音效
             }
-            if(player && player.pauseVideo) player.pauseVideo();
+            
+            // 答題結束時保持背景音樂連續播放，維持全場熱絡氛圍（不調用 pauseVideo）
             
             // 還原試聽狀態
             if (isTestingBgm) {
@@ -774,6 +786,8 @@
             clearInterval(timerInterval);
             if (window.speechSynthesis) window.speechSynthesis.cancel();
             isRunning = false;
+            
+            // 回到設定頁面時，將背景音樂暫停
             if(player && player.pauseVideo) player.pauseVideo();
             
             if (isTestingBgm) {
